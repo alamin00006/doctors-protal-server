@@ -22,13 +22,22 @@ async function run(){
         const serviceCollection = client.db("doctorsPortal").collection("services");
         const bookingCollection = client.db("doctorsPortal").collection("booking");
 
+
+        app.get('/booking', async(req, res) =>{
+        const patient = req.query.patient;
+        const query = {patient: patient};
+        const booking = await bookingCollection.find(query).toArray();
+        res.send(booking)
+        })
+
         app.get('/service' , async(req, res) =>{
             const query ={}
             const cursor = serviceCollection.find(query);
             const services = await cursor.toArray()
             res.send(services);
         })
-        app.post('/booking', async(req, res) =>{
+
+           app.post('/booking', async(req, res) =>{
             const booking = req.body;
             const query = {treatment: booking.treatment, date: booking.date, patient: booking.patient}
             const exist = await bookingCollection.findOne(query);
