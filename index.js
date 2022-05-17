@@ -8,6 +8,11 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 
 app.use(express.json())
 app.use(cors())
+// const corsConfig = {
+//     origin: '*',
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE']
+// }
 
 app.get('/', (req, res) =>{
     res.send('doctor ankel tik ase')
@@ -26,8 +31,10 @@ if(!authHeader){
 const token = authHeader.split(' ')[1];
 // console.log(token)
 jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded) {
+    console.log(decoded)
     if(err){
-        res.status(403).send({message: "Forbidden access"})
+        
+    return  res.status(403).send({message: "Forbidden access"})
     }
     req.decoded = decoded;
     // console.log(req.decoded)
@@ -46,7 +53,7 @@ async function run(){
         const patient = req.query.patient;
         
        const decodedEmail = req.decoded.email;
-    //    console.log(decodedEmail)
+       console.log(patient, decodedEmail)
        if(patient=== decodedEmail){
         const query = {patient: patient};
         const booking = await bookingCollection.find(query).toArray();
@@ -58,7 +65,7 @@ async function run(){
         })
 
         app.put('/user/:email', async(req, res) =>{
-            const email = req.query.email;
+            const email = req.params.email;
             const user = req.body;
             const filter = {email: email};
             const options = {upsert: true};
@@ -66,6 +73,7 @@ async function run(){
                 $set: user
             };
             const result = await userCollection.updateOne(filter, updateDoc, options);
+            console.log(email)
             const token = jwt.sign({email: email}, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
             res.send({result, token});
             })
