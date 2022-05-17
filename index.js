@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
@@ -16,6 +17,23 @@ app.get('/', (req, res) =>{
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ocdik.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+
+function  verifyJWT(req, res, next){
+const authHeader = req.headers.authorization;
+if(!authHeader){
+    return res.status(401).send({message: 'UnAthorized access'})
+}
+const token = authHeader.split(' ')[1];
+// console.log(token)
+jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded) {
+    if(err){
+        res.status(403).send({message: "Forbidden access"})
+    }
+    req.decoded = decoded;
+    // console.log(req.decoded)
+    next()
+  });
+}
 async function run(){
     try{
         await client.connect();
@@ -24,11 +42,19 @@ async function run(){
         const userCollection = client.db("doctorsPortal").collection("user");
 
 
-        app.get('/booking', async(req, res) =>{
+        app.get('/booking', verifyJWT, async(req, res) =>{
         const patient = req.query.patient;
+        
+       const decodedEmail = req.decoded.email;
+    //    console.log(decodedEmail)
+       if(patient=== decodedEmail){
         const query = {patient: patient};
         const booking = await bookingCollection.find(query).toArray();
-        res.send(booking)
+       return res.send(booking)
+       }
+       else{
+           return res.status(403).send({message: "Forbidden access"})
+       }
         })
 
         app.put('/user/:email', async(req, res) =>{
@@ -40,7 +66,8 @@ async function run(){
                 $set: user
             };
             const result = await userCollection.updateOne(filter, updateDoc, options);
-            res.send(result);
+            const token = jwt.sign({email: email}, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            res.send({result, token});
             })
 
         app.get('/service' , async(req, res) =>{
